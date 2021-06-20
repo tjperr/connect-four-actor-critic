@@ -1,13 +1,44 @@
 import random
 from copy import deepcopy
+from typing import Any, List, Sequence, Tuple
 
 import numpy as np
 from scipy.special import softmax
 
-from game import BOARD_WIDTH, BOARD_HEIGHT, Game, run_game
+import tensorflow as tf
+from game import BOARD_HEIGHT, BOARD_WIDTH, Game, run_game
 from tensorflow import keras
-from tensorflow.keras.layers import Dense, InputLayer
+from tensorflow.keras import layers
 from tensorflow.keras.models import Sequential
+
+
+class ActorCritic(tf.keras.Model):
+    """Combined actor-critic network."""
+
+    def __init__(self, num_actions: int, num_hidden_units: int):
+        """Initialize."""
+        super().__init__()
+
+        self.common = layers.Dense(num_hidden_units, activation="relu")
+        self.actor = layers.Dense(num_actions)
+        self.critic = layers.Dense(1)
+
+    def call(self, inputs: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+        x = self.common(inputs)
+        return self.actor(x), self.critic(x)
+
+    def move(self, state):
+
+        # Convert state into a batched tensor (batch size = 1)
+        state = tf.expand_dims(state, 0)
+
+        # Run the model and to get action probabilities and critic value
+        action_logits_t, _ = self.call(state)
+
+        # Sample next action from the action probability distribution
+        action = tf.random.categorical(action_logits_t, 1)[0, 0]
+
+        return action
 
 
 class BasicModel:
@@ -15,19 +46,23 @@ class BasicModel:
     _name = "basic_model"
 
     def move(self, board):
-
         board = np.reshape(board, (BOARD_WIDTH, BOARD_HEIGHT))
 
         # sometimes go for the middle
-        if np.random.random() < 0.25 and sum(np.abs(board[1])) < BOARD_HEIGHT:
+        if np.random.random() < 0.25 and sum(np.abs(board[3])) < BOARD_HEIGHT:
+            # print(3)
             return 3
         # sometimes play randomly
         if np.random.random() < 0.25:
+            # print('random')
             rand = random.randint(0, BOARD_WIDTH - 1)
+            # print(f"rand={rand}")
+            # print(sum(np.abs(board[rand])))
             if sum(np.abs(board[rand])) < BOARD_HEIGHT:
                 return rand
         # sometimes cover the first 1 you see
         else:
+            # print('cover')
             for i in range(len(board)):
                 # Find the top value in column i
                 top_value = 0
@@ -35,10 +70,10 @@ class BasicModel:
                     if x != 0:
                         top_value = x
 
-                if (
-                    sum(np.abs(board[i])) < BOARD_HEIGHT
-                    and top_value == -1
-                ):
+                # print(f"i={i}")
+                # print(f"top_value={top_value}")
+                # print(sum(np.abs(board[i])))
+                if sum(np.abs(board[i])) < BOARD_HEIGHT and top_value == -1:
                     return i
         return random.randint(0, BOARD_WIDTH - 1)
 
@@ -113,10 +148,10 @@ class Model:
 
     def initialise(self):
         self._model = Sequential()
-        self._model.add(InputLayer(input_shape=(1, BOARD_WIDTH * BOARD_HEIGHT)))
-        self._model.add(Dense(4 * BOARD_WIDTH * BOARD_HEIGHT, activation="tanh"))
-        self._model.add(Dense(4 * BOARD_WIDTH * BOARD_HEIGHT, activation="tanh"))
-        self._model.add(Dense(BOARD_WIDTH, activation="linear"))
+        self._model.add(layers.InputLayer(input_shape=(1, BOARD_WIDTH * BOARD_HEIGHT)))
+        self._model.add(layers.Dense(4 * BOARD_WIDTH * BOARD_HEIGHT, activation="tanh"))
+        self._model.add(layers.Dense(4 * BOARD_WIDTH * BOARD_HEIGHT, activation="tanh"))
+        self._model.add(layers.Dense(BOARD_WIDTH, activation="linear"))
         self._model.compile(
             loss="mse",
             optimizer=keras.optimizers.Adam(learning_rate=0.0001),

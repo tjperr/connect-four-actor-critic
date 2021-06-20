@@ -18,7 +18,7 @@ class Game:
         self._move_num = 0
         self._move = None
         self._verbose = verbose
-        self.msg=""
+        self.msg = ""
 
         self.horizontal_seeds = [
             [i, j]
@@ -55,18 +55,21 @@ class Game:
 
         # Return if board full
         if sum([len(col) for col in self._board]) == self._width * self._height:
-            self.msg="board full!"
+            self.msg = "board full!"
+            self.print()
             return -1, self.board()
 
         # Other player wins if move is invalid
         if col_num < 0 or col_num >= self._width:
             self._winner = 1 - self._player
-            self.msg==f"move not recognised!\nWINNER: PLAYER {str(self._winner)}!"
+            self.msg == f"move not recognised!\nWINNER: PLAYER {str(self._winner)}!"
+            self.print()
             return self._winner, self.board()
 
         # Return if more than 2*BOARD_SIZE^2 moves played
         if self._move_num > 2 * self._width * self._height:
-            self.msg="move limit reached"
+            self.msg = "move limit reached"
+            self.print()
             return -1, self.board()
 
         col = self._board[col_num]
@@ -74,7 +77,8 @@ class Game:
         # Other player wins if no space for counter
         if len(col) >= self._height:
             self._winner = 1 - self._player
-            self.msg=f"no space for counter!\nWINNER: PLAYER {str(self._winner)}!"
+            self.msg = f"no space for counter!\nWINNER: PLAYER {str(self._winner)}!"
+            self.print()
             return self._winner, self.board()
 
         col.append(self._player)
@@ -82,7 +86,8 @@ class Game:
         # Check win condition
         if self.winner():
             self._winner = self._player
-            self.msg=f"WINNER: PLAYER {str(self._winner)}!"
+            self.msg = f"WINNER: PLAYER {str(self._winner)}!"
+            self.print()
         else:
             self.print()
             self._player = 1 - self._player
